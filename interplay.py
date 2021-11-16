@@ -7,10 +7,10 @@ import SimpleITK as sitk
 
 
 class Dose:
-    def __init__(self, num_beams, frequency, dose_waited, dose_rate):
+    def __init__(self, num_beams, bpm, dose_waited, dose_rate):
         # sizes of itv and gtv
         self.height = 250
-        self.ratio = 2
+        self.ratio = 3
         self.tot_length = self.height * self.ratio
 
         # initialization of itv and gtv
@@ -20,14 +20,14 @@ class Dose:
         self.gtv = np.ones(self.s_gtv)
 
         # Time values
-        self.freq = frequency  # Hz
-        self.tn = 1000  # End of calculation (s)
-        self.step = 0.001
+        self.freq = bpm/60  # Hz
+        self.tn = 100  # End of calculation (s) - To be sure that one have at least 60 min of beam
+        self.step = 0.005  # the step of calculation is 1 ms
 
         self.p0, self.pn = 0, self.s_itv[1] - self.s_itv[0]  # Available positions for gtv in itv (eg : from 0 to 100)
         self.positions = []
         self.time = []
-        self.get_positions()
+        self.get_positions()  # creates an array containing all the positions of gtv and all time increments
 
         # dose matrix
         self.dose = np.zeros(self.s_gtv)
@@ -41,17 +41,18 @@ class Dose:
         self.time_needed = 0
         self.do_beams()
 
-    def get_positions(self, sinus = False, to_plot=True):
+    def get_positions(self, sinus = True, to_plot=True):
         t0 = 0
         omega = 2 * pi * self.freq  # Pulsation
-        self.time = np.arange(t0, self.tn, omega * self.step)  # Time values for sin
+        self.time = np.arange(t0, self.tn, self.step)  # Time values for sin
 
         if sinus:
-            self.positions = self.pn / 2 * np.sin(self.time + pi / 2) + self.pn / 2  # Positions along the time
+            self.positions = self.pn / 2 * np.sin(omega * self.time-pi/2) + self.pn / 2  # Positions along the time
         else:
-            self.positions = self.pn* np.sin(self.time + pi / 2)**4
+            self.positions = self.pn* np.sin(omega * self.time/2)**4
 
         if to_plot:
+
             plt.plot(self.time[0:1000], self.positions[0:1000])
             plt.xlabel('temps (s)')
             plt.show()
@@ -69,6 +70,7 @@ class Dose:
     def main_loop(self):
         index = 0
         for i, t, bp in zip(self.positions, self.time, self.beam_position_in_time):
+
             index += 1
 
             # New temporary area (size of itv)
@@ -93,22 +95,22 @@ class Dose:
 
             # cv2.imshow('dose', dose/np.max(dose))
 
-            cv2.imshow('beam', temp_beam)
-
-            k = cv2.waitKey(int(20))
-            if index == len(self.beam_position_in_time):
-                cv2.waitKey(0)
-            if k == 27:
-                break
+            if not(t*1000)%5:
+                cv2.imshow('beam', temp_beam)
+                k = cv2.waitKey(int(1))
+                if index == len(self.beam_position_in_time):
+                    cv2.waitKey(0)
+                if k == 27:
+                    break
 
 
 if __name__ == "__main__":
     num_beams = 8
-    frequency = 6
-    dose_waited = 2
+    bpm = 12
+    dose_waited = 0.5
     dose_rate = 20
 
-    d = Dose(num_beams, frequency, dose_waited, dose_rate)
+    d = Dose(num_beams, bpm, dose_waited, dose_rate)
     d.main_loop()
 
     # cv2.namedWindow("gtv")

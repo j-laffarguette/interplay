@@ -5,7 +5,7 @@ from math import pi, sin
 import cv2
 import SimpleITK as sitk
 
-
+print(test)
 class Dose:
     def __init__(self, num_beams, bpm, dose_waited, dose_rate):
         # sizes of itv and gtv
